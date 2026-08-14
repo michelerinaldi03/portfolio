@@ -1,0 +1,218 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const instagramProfiles = [
+	{
+		label: '@mike.glxcrt',
+		url: 'https://www.instagram.com/mike.glxcrt/',
+	},
+	{
+		label: '@glowinmy',
+		url: 'https://www.instagram.com/glowinmy/',
+	},
+];
+---
+
+<Layout title="About me - Mike" description="Description and social links for Michele Rinaldi.">
+	<main class="about-page">
+		<a class="back-link" href="/" aria-label="Back to the portfolio">
+			<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+				<path d="M12 5l1.4 1.4L8.8 11H20v2H8.8l4.6 4.6L12 19 5 12z" />
+			</svg>
+			Portfolio
+		</a>
+
+		<header class="about-hero" aria-labelledby="about-title">
+			<p class="eyebrow">Profile</p>
+			<h1 id="about-title">About me</h1>
+		</header>
+
+		<section class="about-section" aria-label="Description">
+			<p>
+				I work across graphic design and 3D. My work ranges from merchandise and apparel
+				graphics to cover art, posters, branding and 3D elements, often blending different
+				techniques and visual languages to create distinctive, contemporary imagery.
+			</p>
+		</section>
+
+		<section class="social-section" aria-labelledby="social-title">
+			<div class="section-heading">
+				<p>Social</p>
+				<h2 id="social-title">Links</h2>
+			</div>
+
+			<div class="social-links">
+				{
+					instagramProfiles.map((profile) => (
+						<a href={profile.url} target="_blank" rel="noreferrer" aria-label={`Open Instagram ${profile.label}`}>
+							{profile.label}
+							<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+								<path d="M7 7h8.6l-9.3 9.3 1.4 1.4L17 8.4V17h2V5H7z" />
+							</svg>
+						</a>
+					))
+				}
+			</div>
+		</section>
+	</main>
+</Layout>
+
+<style>
+	.about-page {
+		width: min(100%, 980px);
+		margin: 0 auto;
+		padding: 36px 28px 80px;
+	}
+
+	.back-link,
+	.social-links a {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		width: fit-content;
+		color: #111111;
+		font-size: 16px;
+		line-height: 1;
+		text-decoration: none;
+	}
+
+	.back-link::after,
+	.social-links a::after {
+		position: absolute;
+		bottom: -6px;
+		left: 0;
+		display: block;
+		width: 100%;
+		height: 1px;
+		background: currentColor;
+		content: '';
+		transform: scaleX(0.45);
+		transform-origin: right;
+		transition: transform 180ms ease;
+	}
+
+	.back-link:hover::after,
+	.back-link:focus-visible::after,
+	.social-links a:hover::after,
+	.social-links a:focus-visible::after {
+		transform: scaleX(1);
+		transform-origin: left;
+	}
+
+	.back-link:focus-visible,
+	.social-links a:focus-visible {
+		outline: 2px solid #111111;
+		outline-offset: 8px;
+	}
+
+	.back-link svg,
+	.social-links svg {
+		width: 16px;
+		height: 16px;
+		fill: currentColor;
+		transition: transform 180ms ease;
+	}
+
+	.back-link:hover svg,
+	.back-link:focus-visible svg {
+		transform: translateX(-2px);
+	}
+
+	.social-links a:hover svg,
+	.social-links a:focus-visible svg {
+		transform: translate(2px, -2px);
+	}
+
+	.about-hero {
+		display: grid;
+		gap: 18px;
+		padding: 56px 0;
+	}
+
+	.eyebrow,
+	.section-heading p {
+		margin: 0;
+		color: #6f6f6f;
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		line-height: 1.4;
+		text-transform: uppercase;
+	}
+
+	h1,
+	h2,
+	.about-section p {
+		margin: 0;
+	}
+
+	h1 {
+		color: #111111;
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: clamp(44px, 10vw, 112px);
+		font-weight: 400;
+		line-height: 0.92;
+	}
+
+	.about-section {
+		display: grid;
+		gap: 22px;
+		max-width: 760px;
+		padding-bottom: 56px;
+	}
+
+	.about-section p {
+		color: #242424;
+		font-size: clamp(17px, 2vw, 22px);
+		font-weight: 300;
+		line-height: 1.35;
+	}
+
+	.social-section {
+		display: grid;
+		gap: 22px;
+	}
+
+	.section-heading {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 24px;
+		border-top: 1px solid #dddddd;
+		padding-top: 22px;
+	}
+
+	h2 {
+		color: #111111;
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: clamp(26px, 4.5vw, 52px);
+		font-weight: 400;
+		line-height: 1;
+	}
+
+	.social-links {
+		display: grid;
+		gap: 18px;
+	}
+
+	@media (max-width: 640px) {
+		.about-page {
+			padding: 28px 18px 56px;
+		}
+
+		.about-hero {
+			padding: 44px 0;
+		}
+
+		.about-section {
+			padding-bottom: 44px;
+		}
+
+		.section-heading {
+			align-items: start;
+			flex-direction: column;
+			gap: 8px;
+		}
+	}
+</style>

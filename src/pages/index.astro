@@ -1,11 +1,638 @@
 ---
-import Welcome from '../components/Welcome.astro';
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import Layout from '../layouts/Layout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const imageModules = import.meta.glob<{ default: ImageMetadata }>('../img/**/*.{avif,jpeg,jpg,png,webp}', {
+	eager: true,
+});
+
+const getOrderedMeta = (nameWithExtension: string) => {
+	const name = nameWithExtension.replace(/\.[^.]+$/, '');
+	const orderMatch = name.match(/^(\d+)[\s_-]+(.+)$/);
+	const titleSource = orderMatch?.[2] ?? name;
+
+	return {
+		order: orderMatch ? Number(orderMatch[1]) : Number.MAX_SAFE_INTEGER,
+		title: titleSource.replace(/[-_]/g, ' ').trim(),
+	};
+};
+
+const workMap = new Map<
+	string,
+	{
+		images: {
+			image: ImageMetadata;
+			order: number;
+			path: string;
+			title: string;
+		}[];
+		order: number;
+		path: string;
+		title: string;
+	}
+>();
+
+Object.entries(imageModules).forEach(([path, module]) => {
+	const relativePath = path.replace('../img/', '');
+	const segments = relativePath.split('/');
+	const fileName = segments.pop() ?? 'work';
+	const fileMeta = getOrderedMeta(fileName);
+	const folderPath = segments.join('/');
+
+	if (!folderPath) {
+		workMap.set(`file:${relativePath}`, {
+			images: [
+				{
+					image: module.default,
+					order: fileMeta.order,
+					path: relativePath,
+					title: fileMeta.title,
+				},
+			],
+			order: fileMeta.order,
+			path: relativePath,
+			title: fileMeta.title,
+		});
+
+		return;
+	}
+
+	if (!workMap.has(folderPath)) {
+		const folderName = segments.at(-1) ?? folderPath;
+		const folderMeta = getOrderedMeta(folderName);
+
+		workMap.set(folderPath, {
+			images: [],
+			order: folderMeta.order,
+			path: folderPath,
+			title: folderMeta.title,
+		});
+	}
+
+	workMap.get(folderPath)?.images.push({
+		image: module.default,
+		order: fileMeta.order,
+		path: relativePath,
+		title: fileMeta.title,
+	});
+});
+
+const works = Array.from(workMap.values())
+	.map((work) => ({
+		...work,
+		images: work.images.sort((firstImage, secondImage) => {
+			if (firstImage.order !== secondImage.order) {
+				return firstImage.order - secondImage.order;
+			}
+
+			return firstImage.path.localeCompare(secondImage.path);
+		}),
+	}))
+	.sort((firstWork, secondWork) => {
+		if (firstWork.order !== secondWork.order) {
+			return firstWork.order - secondWork.order;
+		}
+
+		return firstWork.path.localeCompare(secondWork.path);
+	});
+
+const getImageAlt = (work: (typeof works)[number], imageIndex: number) =>
+	work.images.length > 1
+		? `${work.title} image ${imageIndex + 1} work by Mike`
+		: `${work.title} work by Mike`;
+
+const carouselIconPath = 'M8.6 5.4 10 4l8 8-8 8-1.4-1.4 5.6-5.6H4v-2h10.2z';
+
+const instagramProfiles = [
+	{
+		label: '@mike.glxcrt',
+		url: 'https://www.instagram.com/mike.glxcrt/',
+	},
+	{
+		label: '@glowinmy',
+		url: 'https://www.instagram.com/glowinmy/',
+	},
+];
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Mike - Portfolio" description="Minimal portfolio by Mike, graphic designer and 3D artist.">
+	<main class="portfolio">
+		<header class="intro" aria-labelledby="page-title">
+			<div class="intro-copy">
+				<p class="role"> Graphic Designer / 3D Modeling</p>
+				<h1 id="page-title">Michele Rinaldi Portfolio</h1>
+				<p class="bio">
+					</p>
+			</div>
+		</header>
+
+		<section class="about" aria-labelledby="about-title">
+			<div class="section-heading">
+				<p>Profile</p>
+				<h2 id="about-title">About me</h2>
+			</div>
+
+			<div class="about-content">
+				<p>
+					A short introduction to my background, visual approach, and the channels where you
+					can follow my work.
+				</p>
+
+				<a class="about-link" href="/about/">
+					Read the description
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M7 7h8.6l-9.3 9.3 1.4 1.4L17 8.4V17h2V5H7z" />
+					</svg>
+				</a>
+
+				<div class="about-social" aria-label="Social links">
+					{
+						instagramProfiles.map((profile) => (
+							<a href={profile.url} target="_blank" rel="noreferrer" aria-label={`Open Instagram ${profile.label}`}>
+								{profile.label}
+								<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+									<path d="M7 7h8.6l-9.3 9.3 1.4 1.4L17 8.4V17h2V5H7z" />
+								</svg>
+							</a>
+						))
+					}
+				</div>
+			</div>
+		</section>
+
+		<section class="works" aria-labelledby="works-title">
+			<div class="section-heading">
+				<p>Selected</p>
+				<h2 id="works-title">Works</h2>
+			</div>
+
+			<div class="work-list">
+				{
+					works.map((work) => (
+						<figure class:list={['work', { 'work--carousel': work.images.length > 1 }]} data-carousel={work.images.length > 1 ? '' : undefined}>
+							<div class="work-media">
+								{
+									work.images.map((workImage, imageIndex) => (
+										<div class:list={['work-slide', { 'is-active': imageIndex === 0 }]} data-carousel-slide aria-hidden={imageIndex === 0 ? 'false' : 'true'}>
+											<Image src={workImage.image} alt={getImageAlt(work, imageIndex)} loading="lazy" />
+										</div>
+									))
+								}
+							</div>
+
+							{work.images.length > 1 && (
+								<div class="carousel-controls" aria-label={`${work.title} carousel controls`}>
+									<button class="carousel-button" type="button" data-carousel-prev aria-label={`Previous ${work.title} image`} title="Previous">
+										<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+											<path d={carouselIconPath} />
+										</svg>
+									</button>
+
+									<span class="carousel-count" data-carousel-count>
+										{`1 / ${work.images.length}`}
+									</span>
+
+									<button class="carousel-button" type="button" data-carousel-next aria-label={`Next ${work.title} image`} title="Next">
+										<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+											<path d={carouselIconPath} />
+										</svg>
+									</button>
+								</div>
+							)}
+
+							<figcaption>{work.title}</figcaption>
+						</figure>
+					))
+				}
+			</div>
+		</section>
+	</main>
+
+	<button class="back-to-top" type="button" aria-label="Back to the top of the page">
+		<span class="back-to-top__icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" focusable="false">
+				<path d="M12 5l-7 7 1.4 1.4L11 8.8V20h2V8.8l4.6 4.6L19 12z"></path>
+			</svg>
+		</span>
+	</button>
 </Layout>
+
+<script>
+	const button = document.querySelector<HTMLButtonElement>('.back-to-top');
+
+	if (button) {
+		let ticking = false;
+
+		const updateButton = () => {
+			const scrollTop = window.scrollY;
+			const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+			const progress = scrollHeight > 0 ? Math.min(scrollTop / scrollHeight, 1) : 0;
+
+			button.style.setProperty('--scroll-progress', `${progress * 360}deg`);
+			button.style.setProperty('--arrow-offset', `${progress * -4}px`);
+			button.classList.toggle('is-visible', scrollTop > 180);
+			ticking = false;
+		};
+
+		const requestUpdate = () => {
+			if (!ticking) {
+				window.requestAnimationFrame(updateButton);
+				ticking = true;
+			}
+		};
+
+		button.addEventListener('click', () => {
+			window.scrollTo({
+				top: 0,
+				behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+			});
+		});
+
+		window.addEventListener('scroll', requestUpdate, { passive: true });
+		window.addEventListener('resize', requestUpdate);
+		updateButton();
+	}
+
+	document.querySelectorAll<HTMLElement>('[data-carousel]').forEach((carousel) => {
+		const slides = Array.from(carousel.querySelectorAll<HTMLElement>('[data-carousel-slide]'));
+		const previousButton = carousel.querySelector<HTMLButtonElement>('[data-carousel-prev]');
+		const nextButton = carousel.querySelector<HTMLButtonElement>('[data-carousel-next]');
+		const count = carousel.querySelector<HTMLElement>('[data-carousel-count]');
+
+		if (slides.length < 2 || !previousButton || !nextButton || !count) {
+			return;
+		}
+
+		let activeIndex = 0;
+
+		const updateCarousel = () => {
+			slides.forEach((slide, index) => {
+				const isActive = index === activeIndex;
+				slide.classList.toggle('is-active', isActive);
+				slide.setAttribute('aria-hidden', String(!isActive));
+			});
+
+			count.textContent = `${activeIndex + 1} / ${slides.length}`;
+		};
+
+		previousButton.addEventListener('click', () => {
+			activeIndex = (activeIndex - 1 + slides.length) % slides.length;
+			updateCarousel();
+		});
+
+		nextButton.addEventListener('click', () => {
+			activeIndex = (activeIndex + 1) % slides.length;
+			updateCarousel();
+		});
+	});
+</script>
+
+<style>
+	.portfolio {
+		width: min(100%, 980px);
+		margin: 0 auto;
+		padding: 56px 28px 80px;
+	}
+
+	.intro {
+		display: grid;
+		grid-template-columns: minmax(0, 760px);
+		gap: 28px;
+		padding-bottom: 56px;
+	}
+
+	.intro-copy {
+		display: grid;
+		gap: 18px;
+	}
+
+	.role,
+	.section-heading p,
+	figcaption {
+		margin: 0;
+		color: #6f6f6f;
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		line-height: 1.4;
+		text-transform: uppercase;
+	}
+
+	h1,
+	h2,
+	.bio {
+		margin: 0;
+	}
+
+	h1 {
+		color: #111111;
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: clamp(44px, 10vw, 112px);
+		font-weight: 400;
+		line-height: 0.92;
+	}
+
+	.bio {
+		max-width: 560px;
+		color: #242424;
+		font-size: clamp(17px, 2vw, 22px);
+		font-weight: 300;
+		line-height: 1.35;
+	}
+
+	.about,
+	.works {
+		display: grid;
+		gap: 22px;
+	}
+
+	.about {
+		padding-bottom: 56px;
+	}
+
+	.section-heading {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 24px;
+		border-top: 1px solid #dddddd;
+		padding-top: 22px;
+	}
+
+	h2 {
+		color: #111111;
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: clamp(26px, 4.5vw, 52px);
+		font-weight: 400;
+		line-height: 1;
+	}
+
+	.about-content {
+		display: grid;
+		gap: 22px;
+		max-width: 680px;
+	}
+
+	.about-content > p {
+		max-width: 680px;
+		margin: 0;
+		color: #242424;
+		font-size: clamp(17px, 2vw, 22px);
+		font-weight: 300;
+		line-height: 1.35;
+	}
+
+	.about-link,
+	.about-social a {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		width: fit-content;
+		color: #111111;
+		font-size: 16px;
+		line-height: 1;
+		text-decoration: none;
+	}
+
+	.about-link::after,
+	.about-social a::after {
+		position: absolute;
+		bottom: -6px;
+		left: 0;
+		display: block;
+		width: 100%;
+		height: 1px;
+		background: currentColor;
+		content: '';
+		transform: scaleX(0.45);
+		transform-origin: right;
+		transition: transform 180ms ease;
+	}
+
+	.about-link:hover::after,
+	.about-link:focus-visible::after,
+	.about-social a:hover::after,
+	.about-social a:focus-visible::after {
+		transform: scaleX(1);
+		transform-origin: left;
+	}
+
+	.about-link:focus-visible,
+	.about-social a:focus-visible {
+		outline: 2px solid #111111;
+		outline-offset: 8px;
+	}
+
+	.about-link svg,
+	.about-social svg {
+		width: 16px;
+		height: 16px;
+		fill: currentColor;
+		transition: transform 180ms ease;
+	}
+
+	.about-link:hover svg,
+	.about-link:focus-visible svg,
+	.about-social a:hover svg,
+	.about-social a:focus-visible svg {
+		transform: translate(2px, -2px);
+	}
+
+	.about-social {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 16px 22px;
+		padding-top: 2px;
+	}
+
+	.work-list {
+		display: grid;
+		gap: 56px;
+	}
+
+	.work {
+		display: grid;
+		gap: 14px;
+		margin: 0;
+	}
+
+	.work-media {
+		background: #f6f6f6;
+	}
+
+	.work-slide {
+		display: none;
+	}
+
+	.work-slide.is-active {
+		display: block;
+	}
+
+	.work-slide :global(img) {
+		display: block;
+		width: 100%;
+		height: auto;
+		background: #f6f6f6;
+	}
+
+	.carousel-controls {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		width: fit-content;
+	}
+
+	.carousel-button {
+		display: grid;
+		width: 36px;
+		height: 36px;
+		padding: 0;
+		place-items: center;
+		border: 1px solid #d8d8d8;
+		border-radius: 50%;
+		background: #ffffff;
+		color: #111111;
+		cursor: pointer;
+		transition:
+			border-color 180ms ease,
+			transform 180ms ease;
+	}
+
+	.carousel-button:first-child svg {
+		transform: rotate(180deg);
+	}
+
+	.carousel-button:hover,
+	.carousel-button:focus-visible {
+		border-color: #111111;
+		transform: translateY(-1px);
+	}
+
+	.carousel-button:focus-visible {
+		outline: 2px solid #111111;
+		outline-offset: 4px;
+	}
+
+	.carousel-button svg {
+		width: 16px;
+		height: 16px;
+		fill: currentColor;
+	}
+
+	.carousel-count {
+		min-width: 42px;
+		color: #6f6f6f;
+		font-size: 12px;
+		font-weight: 500;
+		line-height: 1;
+		text-align: center;
+	}
+
+	figcaption {
+		color: #4b4b4b;
+	}
+
+	.back-to-top {
+		--scroll-progress: 0deg;
+		--arrow-offset: 0px;
+		position: fixed;
+		right: 24px;
+		bottom: 24px;
+		z-index: 10;
+		display: grid;
+		width: 48px;
+		height: 48px;
+		padding: 0;
+		place-items: center;
+		border: 0;
+		border-radius: 50%;
+		background: conic-gradient(#111111 var(--scroll-progress), #e8e8e8 0deg);
+		box-shadow: 0 14px 34px rgba(17, 17, 17, 0.12);
+		cursor: pointer;
+		opacity: 0;
+		pointer-events: none;
+		transform: translateY(14px) scale(0.92);
+		transition:
+			opacity 220ms ease,
+			transform 220ms ease,
+			box-shadow 220ms ease;
+	}
+
+	.back-to-top::before {
+		position: absolute;
+		inset: 3px;
+		content: '';
+		border-radius: inherit;
+		background: #ffffff;
+	}
+
+	.back-to-top.is-visible {
+		opacity: 1;
+		pointer-events: auto;
+		transform: translateY(0) scale(1);
+	}
+
+	.back-to-top:hover,
+	.back-to-top:focus-visible {
+		box-shadow: 0 18px 42px rgba(17, 17, 17, 0.18);
+		transform: translateY(-3px) scale(1);
+	}
+
+	.back-to-top:focus-visible {
+		outline: 2px solid #111111;
+		outline-offset: 4px;
+	}
+
+	.back-to-top__icon {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		width: 20px;
+		height: 20px;
+		place-items: center;
+		transform: translateY(var(--arrow-offset));
+		transition: transform 160ms ease;
+	}
+
+	.back-to-top__icon svg {
+		display: block;
+		width: 20px;
+		height: 20px;
+		fill: #111111;
+	}
+
+	@media (max-width: 640px) {
+		.portfolio {
+			padding: 36px 18px 56px;
+		}
+
+		.intro {
+			grid-template-columns: 1fr;
+			gap: 28px;
+			padding-bottom: 44px;
+		}
+
+		.section-heading {
+			align-items: start;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.about {
+			padding-bottom: 44px;
+		}
+
+		.work-list {
+			gap: 38px;
+		}
+
+		.back-to-top {
+			right: 16px;
+			bottom: 16px;
+			width: 44px;
+			height: 44px;
+		}
+	}
+</style>
