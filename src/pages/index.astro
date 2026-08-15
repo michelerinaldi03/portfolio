@@ -259,12 +259,18 @@ const instagramProfiles = [
 		const previousButton = carousel.querySelector<HTMLButtonElement>('[data-carousel-prev]');
 		const nextButton = carousel.querySelector<HTMLButtonElement>('[data-carousel-next]');
 		const count = carousel.querySelector<HTMLElement>('[data-carousel-count]');
+		const media = carousel.querySelector<HTMLElement>('.work-media');
 
-		if (slides.length < 2 || !previousButton || !nextButton || !count) {
+		if (slides.length < 2 || !previousButton || !nextButton || !count || !media) {
 			return;
 		}
 
 		let activeIndex = 0;
+		let touchStartX: number | null = null;
+		let touchStartY: number | null = null;
+		let touchCurrentX: number | null = null;
+		let touchCurrentY: number | null = null;
+		let isHorizontalSwipe = false;
 
 		const updateCarousel = () => {
 			slides.forEach((slide, index) => {
@@ -276,15 +282,94 @@ const instagramProfiles = [
 			count.textContent = `${activeIndex + 1} / ${slides.length}`;
 		};
 
-		previousButton.addEventListener('click', () => {
+		const goToPreviousSlide = () => {
 			activeIndex = (activeIndex - 1 + slides.length) % slides.length;
 			updateCarousel();
-		});
+		};
 
-		nextButton.addEventListener('click', () => {
+		const goToNextSlide = () => {
 			activeIndex = (activeIndex + 1) % slides.length;
 			updateCarousel();
+		};
+
+		const resetTouch = () => {
+			touchStartX = null;
+			touchStartY = null;
+			touchCurrentX = null;
+			touchCurrentY = null;
+			isHorizontalSwipe = false;
+		};
+
+		previousButton.addEventListener('click', goToPreviousSlide);
+		nextButton.addEventListener('click', goToNextSlide);
+
+		media.addEventListener(
+			'touchstart',
+			(event) => {
+				if (event.touches.length !== 1) {
+					resetTouch();
+					return;
+				}
+
+				const touch = event.touches[0];
+				touchStartX = touch.clientX;
+				touchStartY = touch.clientY;
+				touchCurrentX = touch.clientX;
+				touchCurrentY = touch.clientY;
+				isHorizontalSwipe = false;
+			},
+			{ passive: true },
+		);
+
+		media.addEventListener(
+			'touchmove',
+			(event) => {
+				if (touchStartX === null || touchStartY === null || event.touches.length !== 1) {
+					return;
+				}
+
+				const touch = event.touches[0];
+				touchCurrentX = touch.clientX;
+				touchCurrentY = touch.clientY;
+
+				const deltaX = touchCurrentX - touchStartX;
+				const deltaY = touchCurrentY - touchStartY;
+
+				if (Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+					isHorizontalSwipe = true;
+					event.preventDefault();
+				}
+			},
+			{ passive: false },
+		);
+
+		media.addEventListener('touchend', () => {
+			if (
+				touchStartX === null ||
+				touchStartY === null ||
+				touchCurrentX === null ||
+				touchCurrentY === null
+			) {
+				resetTouch();
+				return;
+			}
+
+			const deltaX = touchCurrentX - touchStartX;
+			const deltaY = touchCurrentY - touchStartY;
+			const swipeThreshold = Math.min(Math.max(media.clientWidth * 0.12, 36), 80);
+
+			if (isHorizontalSwipe && Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+				if (deltaX < 0) {
+					goToNextSlide();
+				} else {
+					goToPreviousSlide();
+				}
+			}
+
+			resetTouch();
 		});
+
+		media.addEventListener('touchcancel', resetTouch);
 	});
 </script>
 
@@ -475,6 +560,11 @@ const instagramProfiles = [
 		width: 100%;
 		height: auto;
 		background: #f6f6f6;
+	}
+
+	.work--carousel .work-media {
+		touch-action: pan-y;
+		user-select: none;
 	}
 
 	.carousel-controls {
